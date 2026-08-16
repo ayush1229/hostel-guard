@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { apiFetch } from "../utils/api";
 
 export default function DayScholar() {
   const [scholars, setScholars] = useState([]);
@@ -17,17 +18,10 @@ export default function DayScholar() {
     setLoading(true);
     setError(null);
     try {
-      const [scholarsRes, logsRes] = await Promise.all([
-        fetch("http://localhost:4000/api/guard/dayscholar"),
-        fetch("http://localhost:4000/api/guard/dayscholar/logs")
+      const [scholarsData, logsData] = await Promise.all([
+        apiFetch("/api/guard/dayscholar"),
+        apiFetch("/api/guard/dayscholar/logs")
       ]);
-
-      if (!scholarsRes.ok || !logsRes.ok) {
-        throw new Error("Failed to fetch data from server");
-      }
-
-      const scholarsData = await scholarsRes.json();
-      const logsData = await logsRes.json();
 
       setScholars(Array.isArray(scholarsData) ? scholarsData : []);
       setLogs(Array.isArray(logsData) ? logsData : []);
@@ -42,20 +36,16 @@ export default function DayScholar() {
   async function handleAction(scholarId, direction) {
     setActionLoading(scholarId);
     try {
-      const res = await fetch("http://localhost:4000/api/guard/dayscholar/log", {
+      await apiFetch("/api/guard/dayscholar/log", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scholar_id: scholarId,
           direction: direction
         })
       });
 
-      if (!res.ok) throw new Error("Failed to mark " + direction);
-      
       // Refresh logs after action
-      const logsRes = await fetch("http://localhost:4000/api/guard/dayscholar/logs");
-      const logsData = await logsRes.json();
+      const logsData = await apiFetch("/api/guard/dayscholar/logs");
       setLogs(Array.isArray(logsData) ? logsData : []);
     } catch (err) {
       console.error(err);

@@ -31,9 +31,9 @@ export async function replaceOutpassCache(outpasses) {
 export async function upsertOutpassCache(outpasses) {
   if (!outpasses || outpasses.length === 0) return;
   
-  const toUpsert = outpasses.filter((o) => o.outp_status === 'Approved');
+  const toUpsert = outpasses.filter((o) => o.outp_status === 'Approved' && (o.is_active === true || o.is_active === 'true' || o.is_active === 1));
   const toRemoveIds = outpasses
-    .filter((o) => o.outp_status && o.outp_status !== 'Approved')
+    .filter((o) => o.outp_status !== 'Approved' || (o.is_active !== true && o.is_active !== 'true' && o.is_active !== 1))
     .map((o) => o.id || o.outpass_id);
 
   await guardDb.transaction('rw', guardDb.outpasses, async () => {

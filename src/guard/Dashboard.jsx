@@ -179,11 +179,11 @@ export default function GuardDashboard() {
       const q = search.toLowerCase();
       list = list.filter(
         (o) =>
-          o.name?.toLowerCase().includes(q) ||
-          o.roll_no?.toLowerCase().includes(q) ||
-          o.room?.toLowerCase().includes(q) ||
-          o.hostel?.toLowerCase().includes(q) ||
-          o.place_of_visit?.toLowerCase().includes(q)
+          String(o.name || '').toLowerCase().includes(q) ||
+          String(o.roll_no || '').toLowerCase().includes(q) ||
+          String(o.room || '').toLowerCase().includes(q) ||
+          String(o.hostel || '').toLowerCase().includes(q) ||
+          String(o.place_of_visit || '').toLowerCase().includes(q)
       );
     }
     return list;

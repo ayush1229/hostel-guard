@@ -62,8 +62,8 @@ export async function pullOutpasses() {
     if (isDelta) {
       await upsertOutpassCache(rawList);
     } else {
-      const approvedOnly = rawList.filter((o) => o.outp_status === 'Approved');
-      await replaceOutpassCache(approvedOnly);
+      const activeAndApproved = rawList.filter((o) => o.outp_status === 'Approved' && (o.is_active === true || o.is_active === 'true' || o.is_active === 1));
+      await replaceOutpassCache(activeAndApproved);
     }
 
     localStorage.setItem(LAST_SYNC_KEY, serverTime);
@@ -179,9 +179,15 @@ export async function flushThenPull() {
  * @param {Function} onOutpassesUpdated - React callback to re-read Dexie
  */
 export function initSyncEngine(onOutpassesUpdated) {
+  _onOutpassesUpdated = onOutpassesUpdated;
+
   if (_initialized) {
-    // Just update the callback if re-mounted
-    _onOutpassesUpdated = onOutpassesUpdated;
+    // Component remounted (e.g., navigated back)
+    // Restart interval if it was cleared
+    if (!_syncIntervalId) {
+      flushThenPull();
+      _syncIntervalId = setInterval(flushThenPull, SYNC_INTERVAL_MS);
+    }
     return;
   }
 

@@ -340,133 +340,143 @@ export default function GuardDashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {paginatedList.map((o) => {
-              const targetId = o.id || o.outpass_id;
-              const isProcessing = processingId === targetId;
-              const isInCampus = o.std_status === 'In' || !o.std_status;
-              const isOutstation = (o.outpass_type || o.type || '').toLowerCase() === 'outstation';
-              const isSelected = selectedIds.includes(targetId);
-              const isExpanded = expandedId === targetId;
-
-              return (
-                <div
-                  key={targetId}
-                  className={`bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 relative flex flex-col justify-between space-y-4 border ${
-                    isSelected
-                      ? 'border-[#6d0f16] ring-1 ring-[#6d0f16]/50 bg-[#6d0f16]/5'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  {/* TOP ROW */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <div className="pt-1">
-                        <div
-                          onClick={(e) => toggleSelect(targetId, e)}
-                          className={`w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-colors ${
-                            isSelected ? 'bg-[#6d0f16] border-[#6d0f16]' : 'bg-white border-gray-300'
-                          }`}
-                        >
-                          {isSelected && <span className="text-white text-xs">✓</span>}
-                        </div>
-                      </div>
-                      <div className="min-w-0">
-                        <h2 className="text-base font-bold text-gray-900 truncate">{o.name}</h2>
-                        <p className="text-[11px] font-bold text-gray-500 truncate tracking-wide mt-1">
-                          {o.roll_no || 'No Roll'} • {o.degree_type || 'No Degree'}
-                        </p>
-                        <p className="text-[10px] font-bold text-[#6d0f16] truncate tracking-widest uppercase mt-0.5">
-                          {o.hostel} ({o.room || '-'})
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2 shrink-0">
-                      <span
-                        className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border ${
-                          isInCampus
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-red-50 text-red-700 border-red-200'
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-500 font-bold border-b border-gray-200">
+                  <tr>
+                    <th className="px-5 py-4 w-12 text-center">
+                      <div 
+                        onClick={toggleSelectAllPage}
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-colors mx-auto ${
+                          paginatedList.length > 0 && paginatedList.every(o => selectedIds.includes(o.id || o.outpass_id)) ? 'bg-[#6d0f16] border-[#6d0f16]' : 'bg-white border-gray-300'
                         }`}
                       >
-                        {isInCampus ? 'INSIDE' : 'OUTSIDE'}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${
-                          isOutstation
-                            ? 'bg-purple-50 text-purple-700 border-purple-200'
-                            : 'bg-teal-50 text-teal-700 border-teal-200'
-                        }`}
-                      >
-                        {isOutstation ? 'Outstation' : 'Local'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* SUMMARY INFO */}
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs space-y-1.5">
-                    <div className="flex justify-between text-gray-600">
-                      <span className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Destination</span>
-                      <span className="font-bold truncate max-w-[160px] text-gray-900">{o.place_of_visit || '-'}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span className="text-gray-500 font-bold uppercase text-[10px] tracking-widest">Return By</span>
-                      <span className="font-bold text-gray-900 truncate">{formatDate(o.arrival_datetime)}</span>
-                    </div>
-                  </div>
-
-                  {/* EXPANDED DETAILS */}
-                  {isExpanded && (
-                    <div className="pt-3 border-t border-gray-100 space-y-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Detail label="Phone" value={o.phone} />
-                        <Detail label="Parent" value={o.parent_contact} />
-                        <Detail label="Purpose" value={o.purpose} />
-                        <Detail label="Departure" value={formatDate(o.departure_datetime)} />
+                        {paginatedList.length > 0 && paginatedList.every(o => selectedIds.includes(o.id || o.outpass_id)) && <span className="text-white text-xs">✓</span>}
                       </div>
-                      <input
-                        type="text"
-                        placeholder="Add internal guard remark optional..."
-                        value={remarks[targetId] || ''}
-                        onChange={(e) =>
-                          setRemarks((prev) => ({ ...prev, [targetId]: e.target.value }))
-                        }
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 outline-none focus:border-[#6d0f16] focus:ring-1 focus:ring-[#6d0f16]/50 placeholder-gray-400"
-                      />
-                    </div>
-                  )}
+                    </th>
+                    <th className="px-5 py-4">Student</th>
+                    <th className="px-5 py-4 hidden md:table-cell">Hostel & Room</th>
+                    <th className="px-5 py-4 hidden lg:table-cell">Destination</th>
+                    <th className="px-5 py-4">Return By</th>
+                    <th className="px-5 py-4 text-center">Status</th>
+                    <th className="px-5 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedList.map((o) => {
+                    const targetId = o.id || o.outpass_id;
+                    const isProcessing = processingId === targetId;
+                    const isInCampus = o.std_status === 'In' || !o.std_status;
+                    const isOutstation = (o.outpass_type || o.type || '').toLowerCase() === 'outstation';
+                    const isSelected = selectedIds.includes(targetId);
+                    const isExpanded = expandedId === targetId;
 
-                  {/* ACTION BAR */}
-                  <div className="flex items-center gap-2 pt-2">
-                    <button
-                      onClick={(e) => toggleExpand(targetId, e)}
-                      className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-bold text-xs transition cursor-pointer shrink-0"
-                    >
-                      {isExpanded ? 'Less ▆' : 'Details ╼'}
-                    </button>
-
-                    <button
-                      onClick={(e) => handleGateAction(o, e)}
-                      disabled={isProcessing}
-                      className={`flex-1 py-2.5 rounded-xl font-bold text-sm uppercase tracking-widest transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer ${
-                        isInCampus
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                      }`}
-                    >
-                      {isProcessing ? (
-                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : isInCampus ? (
-                        <span>Mark Exit</span>
-                      ) : (
-                        <span>Mark Return</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                    return (
+                      <React.Fragment key={targetId}>
+                        <tr className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-[#6d0f16]/5' : ''}`}>
+                          <td className="px-5 py-4 text-center">
+                            <div
+                              onClick={(e) => toggleSelect(targetId, e)}
+                              className={`w-5 h-5 rounded-md border flex items-center justify-center cursor-pointer transition-colors mx-auto ${
+                                isSelected ? 'bg-[#6d0f16] border-[#6d0f16]' : 'bg-white border-gray-300'
+                              }`}
+                            >
+                              {isSelected && <span className="text-white text-xs">✓</span>}
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <h2 className="text-sm font-bold text-gray-900 truncate">{o.name}</h2>
+                            <p className="text-[11px] font-bold text-gray-500 truncate tracking-wide mt-0.5">
+                              {o.roll_no || 'No Roll'} • {o.degree_type || 'No Degree'}
+                            </p>
+                          </td>
+                          <td className="px-5 py-4 hidden md:table-cell">
+                            <p className="text-xs font-bold text-[#6d0f16] truncate tracking-widest uppercase">
+                              {o.hostel}
+                            </p>
+                            <p className="text-[11px] font-semibold text-gray-500 mt-0.5">Room {o.room || '-'}</p>
+                          </td>
+                          <td className="px-5 py-4 hidden lg:table-cell">
+                            <span className="font-semibold truncate max-w-[160px] text-gray-900 inline-block">{o.place_of_visit || '-'}</span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className="font-semibold text-gray-900">{formatDate(o.arrival_datetime)}</span>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <div className="flex flex-col items-center gap-1.5">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest border ${
+                                  isInCampus
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-red-50 text-red-700 border-red-200'
+                                }`}
+                              >
+                                {isInCampus ? 'INSIDE' : 'OUTSIDE'}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${
+                                  isOutstation
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                    : 'bg-teal-50 text-teal-700 border-teal-200'
+                                }`}
+                              >
+                                {isOutstation ? 'Outstation' : 'Local'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={(e) => toggleExpand(targetId, e)}
+                                className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-bold text-[11px] transition cursor-pointer"
+                              >
+                                {isExpanded ? 'Less' : 'Details'}
+                              </button>
+                              <button
+                                onClick={(e) => handleGateAction(o, e)}
+                                disabled={isProcessing}
+                                className={`px-4 py-1.5 rounded-lg font-bold text-[11px] uppercase tracking-widest transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center gap-1.5 cursor-pointer ${
+                                  isInCampus
+                                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                }`}
+                              >
+                                {isProcessing ? (
+                                  <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                                ) : null}
+                                {isInCampus ? 'Exit' : 'Return'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="bg-gray-50/80 border-b border-gray-200">
+                            <td colSpan="7" className="px-5 py-4">
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+                                <Detail label="Phone" value={o.phone} />
+                                <Detail label="Parent" value={o.parent_contact} />
+                                <Detail label="Purpose" value={o.purpose} />
+                                <Detail label="Departure" value={formatDate(o.departure_datetime)} />
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Add internal guard remark optional..."
+                                value={remarks[targetId] || ''}
+                                onChange={(e) =>
+                                  setRemarks((prev) => ({ ...prev, [targetId]: e.target.value }))
+                                }
+                                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 outline-none focus:border-[#6d0f16] focus:ring-1 focus:ring-[#6d0f16]/50 placeholder-gray-400 shadow-inner"
+                              />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* PAGINATION */}

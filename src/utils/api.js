@@ -17,19 +17,11 @@ export async function apiFetch(
       `${BASE_URL}${endpoint}`,
       {
         ...options,
-
+        credentials: "include",
         headers: {
-
           "Content-Type":
             "application/json",
-
-          Authorization:
-            token
-              ? `Bearer ${token}`
-              : "",
-
           role: role || "",
-
           ...(options.headers || {}),
         },
       }

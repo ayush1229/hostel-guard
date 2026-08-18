@@ -19,6 +19,7 @@ export default function GuardLayout() {
 
         {/* NAVIGATION LINKS */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <NavItem to="/scan" label="📷 Scan Barcode / QR" />
           <NavItem to="/dashboard" label="Gate Terminal" />
           <NavItem to="/logs" label="Movement Logs" />
           <NavItem to="/dayscholar" label="Day Scholar" />

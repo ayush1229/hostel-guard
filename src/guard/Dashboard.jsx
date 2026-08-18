@@ -4,9 +4,12 @@ import {
   updateLocalOutpassStatus,
   deleteOutpassFromCache,
   enqueueActionLog,
+  findOutpassByIdOrRoll,
 } from "./db/queries.js";
 import { initSyncEngine, destroySyncEngine, flushOfflineQueue } from "./sync/syncEngine.js";
 import { useNetwork } from "./sync/useNetwork.js";
+import QRScannerModal from "./QRScannerModal.jsx";
+import StudentVerifyModal from "./StudentVerifyModal.jsx";
 
 function formatDate(date) {
   if (!date) return "-";
@@ -42,7 +45,7 @@ export default function GuardDashboard() {
   const [loading, setLoading] = useState(true);
 
   /* ┌─────────────────────────────────────────────────────────────────────────┐
-     │ UI State                                                                │
+     │ UI & Scanner State                                                      │
      └─────────────────────────────────────────────────────────────────────────┘ */
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
@@ -55,6 +58,10 @@ export default function GuardDashboard() {
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(1);
   const limit = 9;
+
+  // QR Scanner & Verification Modals
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [verifiedRecord, setVerifiedRecord] = useState(null);
 
   /* ┌─────────────────────────────────────────────────────────────────────────┐
      │ Network Status                                                          │
@@ -82,12 +89,13 @@ export default function GuardDashboard() {
   /* ┌─────────────────────────────────────────────────────────────────────────┐
      │ Gate Action (Single) — local-first                                      │
      └─────────────────────────────────────────────────────────────────────────┘ */
-  async function handleGateAction(record, e) {
+  async function handleGateAction(record, e, customRemark) {
     if (e) e.stopPropagation();
     const outpassId = record.id || record.outpass_id;
     const isCurrentlyIn = record.std_status === "In" || !record.std_status;
     const targetAction = isCurrentlyIn ? "exit" : "enter";
     const currentRemark =
+      customRemark ||
       remarks[outpassId] ||
       (isCurrentlyIn ? "Gate exit recorded" : "Returned safely to campus");
 
@@ -128,6 +136,7 @@ export default function GuardDashboard() {
 
       setRemarks((prev) => ({ ...prev, [outpassId]: "" }));
       setSelectedIds((prev) => prev.filter((i) => i !== outpassId));
+      setVerifiedRecord(null);
 
       if (isOnline) flushOfflineQueue();
     } catch (err) {
@@ -136,6 +145,52 @@ export default function GuardDashboard() {
     } finally {
       setProcessingId(null);
     }
+  }
+
+  /* ┌─────────────────────────────────────────────────────────────────────────┐
+     │ Handle QR Code Scan Detected                                            │
+     └─────────────────────────────────────────────────────────────────────────┘ */
+  async function handleQRScanSuccess(scannedText) {
+    if (!scannedText) return;
+    let targetKey = scannedText.trim();
+
+    try {
+      // If student presented JSON QR code
+      if (targetKey.startsWith("{") && targetKey.endsWith("}")) {
+        const parsed = JSON.parse(targetKey);
+        targetKey = parsed.outpassId || parsed.id || parsed.rollNo || parsed.roll_no || targetKey;
+      }
+    } catch (e) {
+      // Continue with raw string
+    }
+
+    // Clean prefix like OP- if present
+    const cleanId = targetKey.replace(/^OP-/i, "");
+
+    // 1. Search in local Dexie DB
+    const found = await findOutpassByIdOrRoll(cleanId) || await findOutpassByIdOrRoll(targetKey);
+
+    if (found) {
+      setIsScannerOpen(false);
+      setVerifiedRecord(found);
+      return;
+    }
+
+    // 2. Search currently loaded list
+    const inMemoryMatch = data.find(
+      (o) =>
+        String(o.id) === cleanId ||
+        String(o.outpass_id) === cleanId ||
+        String(o.roll_no).toLowerCase() === cleanId.toLowerCase()
+    );
+
+    if (inMemoryMatch) {
+      setIsScannerOpen(false);
+      setVerifiedRecord(inMemoryMatch);
+      return;
+    }
+
+    alert(`No active approved outpass found matching "${targetKey}".\nPlease verify that the outpass has been approved by the hostel authority.`);
   }
 
   /* ┌─────────────────────────────────────────────────────────────────────────┐
@@ -238,6 +293,15 @@ export default function GuardDashboard() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap justify-end">
+          {/* QR SCAN BUTTON */}
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-xs uppercase tracking-wider text-white bg-[#6d0f16] hover:bg-[#560c12] active:scale-95 shadow-md shadow-[#6d0f16]/20 transition cursor-pointer"
+          >
+            <span className="text-base leading-none">📷</span>
+            <span>Scan Student QR</span>
+          </button>
+
           {pendingCount > 0 && (
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-orange-100 text-orange-600 border border-orange-200 shadow-sm animate-pulse">
               {pendingCount} PENDING SYNC
@@ -428,10 +492,13 @@ export default function GuardDashboard() {
                           <td className="px-5 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <button
-                                onClick={(e) => toggleExpand(targetId, e)}
-                                className="px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 font-bold text-[11px] transition cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVerifiedRecord(o);
+                                }}
+                                className="px-3.5 py-1.5 rounded-lg bg-gray-100 hover:bg-[#6d0f16] hover:text-white border border-gray-200 text-gray-700 font-bold text-[11px] transition cursor-pointer"
                               >
-                                {isExpanded ? 'Less' : 'Details'}
+                                Verify & Info
                               </button>
                               <button
                                 onClick={(e) => handleGateAction(o, e)}
@@ -533,6 +600,22 @@ export default function GuardDashboard() {
           </div>
         </div>
       )}
+
+      {/* QR SCANNER MODAL */}
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleQRScanSuccess}
+      />
+
+      {/* STUDENT DETAILS & VERIFICATION POPUP MODAL */}
+      <StudentVerifyModal
+        record={verifiedRecord}
+        isOpen={Boolean(verifiedRecord)}
+        onClose={() => setVerifiedRecord(null)}
+        onAction={(rec, act, rem) => handleGateAction(rec, null, rem)}
+        isProcessing={processingId === (verifiedRecord?.id || verifiedRecord?.outpass_id)}
+      />
     </div>
   );
 }

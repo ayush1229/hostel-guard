@@ -64,6 +64,25 @@ export async function updateLocalOutpassStatus(outpassId, newStatus) {
 }
 
 /**
+ * Find an outpass by its ID, outpass_id or roll number.
+ * @param {string} idOrRoll
+ * @returns {Promise<Object|null>}
+ */
+export async function findOutpassByIdOrRoll(idOrRoll) {
+  if (!idOrRoll) return null;
+  const clean = String(idOrRoll).trim();
+  const all = await guardDb.outpasses.toArray();
+  return (
+    all.find(
+      (o) =>
+        String(o.id) === clean ||
+        String(o.outpass_id) === clean ||
+        String(o.roll_no).toLowerCase() === clean.toLowerCase()
+    ) || null
+  );
+}
+
+/**
  * Remove a completed outpass from the local cache.
  * Called when a student returns (action: 'enter') — the outpass is
  * done and should no longer appear in the active list, even after refresh.
@@ -153,4 +172,100 @@ export async function getAllActionLogs() {
  */
 export async function clearAllActionLogs() {
   await guardDb.action_logs.clear();
+}
+
+// ─── Hostel Outpasses ───────────────────────────────────────
+
+export async function replaceHostelOutpassCache(outpasses) {
+  await guardDb.transaction('rw', guardDb.hostel_outpasses, async () => {
+    await guardDb.hostel_outpasses.clear();
+    if (outpasses.length > 0) {
+      await guardDb.hostel_outpasses.bulkPut(outpasses);
+    }
+  });
+}
+
+export async function upsertHostelOutpassCache(outpasses) {
+  if (!outpasses || outpasses.length === 0) return;
+  const toUpsert = outpasses.filter(
+    (o) => o.outp_status === 'Approved' && (o.is_active === true || o.is_active === 'true' || o.is_active === 1)
+  );
+  const toRemoveIds = outpasses
+    .filter(
+      (o) => o.outp_status !== 'Approved' || (o.is_active !== true && o.is_active !== 'true' && o.is_active !== 1)
+    )
+    .map((o) => o.id || o.outpass_id);
+
+  await guardDb.transaction('rw', guardDb.hostel_outpasses, async () => {
+    if (toUpsert.length > 0) await guardDb.hostel_outpasses.bulkPut(toUpsert);
+    if (toRemoveIds.length > 0) await guardDb.hostel_outpasses.bulkDelete(toRemoveIds);
+  });
+}
+
+export async function getAllHostelOutpasses() {
+  return guardDb.hostel_outpasses.toArray();
+}
+
+export async function updateLocalHostelOutpassStatus(outpassId, newHostelStatus) {
+  await guardDb.hostel_outpasses.update(outpassId, { hostel_std_status: newHostelStatus });
+}
+
+export async function deleteHostelOutpassFromCache(outpassId) {
+  await guardDb.hostel_outpasses.delete(outpassId);
+}
+
+export async function findHostelOutpassByIdOrRoll(idOrRoll) {
+  if (!idOrRoll) return null;
+  const clean = String(idOrRoll).trim();
+  const all = await guardDb.hostel_outpasses.toArray();
+  return (
+    all.find(
+      (o) =>
+        String(o.id) === clean ||
+        String(o.outpass_id) === clean ||
+        String(o.roll_no).toLowerCase() === clean.toLowerCase()
+    ) || null
+  );
+}
+
+// ─── Hostel Action Logs (Offline Queue) ─────────────────────
+
+export async function enqueueHostelActionLog(log) {
+  await guardDb.hostel_action_logs.add(log);
+}
+
+export async function getPendingHostelLogs() {
+  return guardDb.hostel_action_logs
+    .where('sync_status')
+    .anyOf('PENDING', 'FAILED')
+    .toArray();
+}
+
+export async function markHostelLogsSynced(ids) {
+  await guardDb.transaction('rw', guardDb.hostel_action_logs, async () => {
+    for (const id of ids) {
+      await guardDb.hostel_action_logs.update(id, { sync_status: 'SYNCED' });
+    }
+  });
+}
+
+export async function markHostelLogFailed(id) {
+  await guardDb.hostel_action_logs.update(id, { sync_status: 'FAILED' });
+}
+
+export async function markHostelLogsSyncing(ids) {
+  await guardDb.transaction('rw', guardDb.hostel_action_logs, async () => {
+    for (const id of ids) {
+      await guardDb.hostel_action_logs.update(id, { sync_status: 'SYNCING' });
+    }
+  });
+}
+
+export async function getAllHostelActionLogs() {
+  const logs = await guardDb.hostel_action_logs.toArray();
+  return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+}
+
+export async function clearAllHostelActionLogs() {
+  await guardDb.hostel_action_logs.clear();
 }

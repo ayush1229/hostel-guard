@@ -7,6 +7,7 @@
     "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "allowJs": true,
+    "checkJs": false,
     "skipLibCheck": true,
 
     /* Bundler mode */

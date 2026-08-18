@@ -103,10 +103,16 @@ function getReadableDeviceInfo(webgl, screenSpecs) {
   };
 }
 
+let cachedFingerprint = null;
+
 /**
  * Main Function: Extract Full Device Fingerprint and Metadata
  */
-export async function getDeviceFingerprint() {
+export async function getDeviceFingerprint(forceRefresh = false) {
+  if (cachedFingerprint && !forceRefresh) {
+    return cachedFingerprint;
+  }
+
   const webgl = getWebGLInfo();
   const canvasHash = getCanvasFingerprint();
 
@@ -131,7 +137,7 @@ export async function getDeviceFingerprint() {
   try {
     const fpPromise = Promise.race([
       loadFingerprint().then(agent => agent.get()).then(res => res.visitorId),
-      new Promise(resolve => setTimeout(() => resolve(null), 500))
+      new Promise(resolve => setTimeout(() => resolve(null), 200))
     ]);
     const result = await fpPromise;
     if (result) fpVisitorId = result;
@@ -155,7 +161,7 @@ export async function getDeviceFingerprint() {
   const compositeHash = fastHash(compositePayload);
   const readable = getReadableDeviceInfo(webgl, screenSpecs);
 
-  return {
+  cachedFingerprint = {
     fingerprintHash: compositeHash,
     visitorId: fpVisitorId,
     deviceInfo: {
@@ -165,4 +171,6 @@ export async function getDeviceFingerprint() {
       webglDetails: webgl
     }
   };
+
+  return cachedFingerprint;
 }

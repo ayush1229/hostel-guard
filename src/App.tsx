@@ -3,8 +3,32 @@ import GuardLayout from './guard/GuardLayout';
 import Dashboard from './guard/Dashboard';
 import GateLogs from './guard/GateLogs';
 import DayScholar from './guard/DayScholar';
+import HostelDashboard from './guard/HostelDashboard';
+import HostelLogs from './guard/HostelLogs';
 import DeviceGatekeeper from './guard/verification/DeviceGatekeeper';
 import './App.css';
+
+/** Redirect root '/' to the correct default page based on guard type */
+function RootRedirect() {
+  const guardType = localStorage.getItem('guard_type') || 'MAIN_GATE';
+  return <Navigate to={guardType === 'HOSTEL_GATE' ? '/hostel-dashboard' : '/dashboard'} replace />;
+}
+
+function MainGateRoute({ element }: { element: React.ReactElement }) {
+  const guardType = localStorage.getItem('guard_type') || 'MAIN_GATE';
+  if (guardType === 'HOSTEL_GATE') {
+    return <Navigate to="/hostel-dashboard" replace />;
+  }
+  return element;
+}
+
+function HostelGateRoute({ element }: { element: React.ReactElement }) {
+  const guardType = localStorage.getItem('guard_type') || 'MAIN_GATE';
+  if (guardType !== 'HOSTEL_GATE') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return element;
+}
 
 function App() {
   return (
@@ -12,10 +36,17 @@ function App() {
       <DeviceGatekeeper>
         <Routes>
           <Route path='/' element={<GuardLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path='dashboard' element={<Dashboard />} />
-            <Route path='logs' element={<GateLogs />} />
-            <Route path='dayscholar' element={<DayScholar />} />
+            {/* Smart default redirect */}
+            <Route index element={<RootRedirect />} />
+
+            {/* Main Gate routes */}
+            <Route path='dashboard' element={<MainGateRoute element={<Dashboard />} />} />
+            <Route path='logs' element={<MainGateRoute element={<GateLogs />} />} />
+            <Route path='dayscholar' element={<MainGateRoute element={<DayScholar />} />} />
+
+            {/* Hostel Gate routes */}
+            <Route path='hostel-dashboard' element={<HostelGateRoute element={<HostelDashboard />} />} />
+            <Route path='hostel-logs' element={<HostelGateRoute element={<HostelLogs />} />} />
           </Route>
           <Route path='*' element={<Navigate to='/' replace />} />
         </Routes>
